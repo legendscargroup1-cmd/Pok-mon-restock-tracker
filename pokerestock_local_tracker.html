@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PokeRestock Local Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pokeDark: '#0f172a',
+                        pokeCard: '#1e293b',
+                        pokeRed: '#ef4444',
+                        pokeYellow: '#eab308',
+                        pokeBlue: '#3b82f6',
+                        pokeAccent: '#06b6d4',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.35);
+        }
+        .glow-blue {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.35);
+        }
+        .glow-yellow {
+            box-shadow: 0 0 15px rgba(234, 179, 8, 0.35);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#0b0f19]">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-30 bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Logo & Brand -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-red-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-red-500/20">
+                    <i class="fa-solid fa-circle-dot text-white text-xl animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+                        PokeRestock <span class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-semibold border border-red-500/30">LOCAL HQ</span>
+                    </h1>
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <span class="flex h-2 w-2 relative">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span>Live Sync: Active</span>
+                        <span class="text-slate-600">•</span>
+                        <span id="lastUpdatedTime">Updated just now</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+                <button id="scanBtn" onclick="runScanAnimation()" class="flex-1 md:flex-initial px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl font-medium text-sm border border-slate-700 transition flex items-center justify-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-radar text-sky-400" id="scanIcon"></i>
+                    <span>Scan Nearby Stores</span>
+                </button>
+                <button onclick="openModal('addAlertModal')" class="px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-600 text-white rounded-xl font-medium text-sm shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-bell-plus"></i>
+                    <span>Add Custom Alert</span>
+                </button>
+                <button onclick="openModal('techModal')" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 rounded-xl border border-slate-700 transition" title="Scraper & API Integration Guide">
+                    <i class="fa-solid fa-code"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        <!-- Notification Toast Banner (Hidden by default) -->
+        <div id="toastBanner" class="hidden transform transition-all duration-300 p-4 rounded-2xl bg-gradient-to-r from-blue-900/80 to-slate-900 border border-blue-500/30 flex items-center justify-between text-blue-200 shadow-lg">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-white" id="toastTitle">Scanning complete</h4>
+                    <p class="text-xs text-slate-300" id="toastMessage">Found 2 new restock updates within 5 miles!</p>
+                </div>
+            </div>
+            <button onclick="hideToast()" class="text-slate-400 hover:text-white text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Key Metrics Summary Cards -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Card 1 -->
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-4 relative overflow-hidden group hover:border-slate-700 transition">
+                <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition"></div>
+                <div class="flex items-center justify-between text-slate-400 mb-2">
+                    <span class="text-xs font-medium uppercase tracking-wider">Stores Monitored</span>
+                    <i class="fa-solid fa-store text-blue-400 text-sm"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-extrabold text-white" id="metricStores">8</span>
+                    <span class="text-xs text-emerald-400 font-medium"><i class="fa-solid fa-location-dot"></i> 5 mi radius</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">Target, Walmart, LGS, etc.</div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-4 relative overflow-hidden group hover:border-slate-700 transition">
+                <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition"></div>
+                <div class="flex items-center justify-between text-slate-400 mb-2">
+                    <span class="text-xs font-medium uppercase tracking-wider">Restocks Today</span>
+                    <i class="fa-solid fa-bolt text-emerald-400 text-sm"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-extrabold text-white" id="metricRestocks">3</span>
+                    <span class="text-xs text-emerald-400 font-medium"><i class="fa-solid fa-arrow-trend-up"></i> High Activity</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">Latest 12m ago at Target</div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-4 relative overflow-hidden group hover:border-slate-700 transition">
+                <div class="absolute -right-4 -top-4 w-16 h-16 bg-yellow-500/10 rounded-full blur-xl group-hover:bg-yellow-500/20 transition"></div>
+                <div class="flex items-center justify-between text-slate-400 mb-2">
+                    <span class="text-xs font-medium uppercase tracking-wider">Tracked Items</span>
+                    <i class="fa-solid fa-box text-yellow-400 text-sm"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-extrabold text-white" id="metricItems">14</span>
+                    <span class="text-xs text-slate-400 font-medium">ETBs, Bundles & Singles</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">Active alerts configured</div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-4 relative overflow-hidden group hover:border-slate-700 transition">
+                <div class="absolute -right-4 -top-4 w-16 h-16 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition"></div>
+                <div class="flex items-center justify-between text-slate-400 mb-2">
+                    <span class="text-xs font-medium uppercase tracking-wider">Restock Cadence</span>
+                    <i class="fa-solid fa-calendar-days text-purple-400 text-sm"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-extrabold text-white">3.5 <span class="text-lg font-normal text-slate-400">Days</span></span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1">Optimal hunting: Fri/Sat</div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs & View Mode Switcher -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div class="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 w-full sm:w-auto">
+                <button id="tabAlertsBtn" onclick="switchMainTab('alerts')" class="flex-1 sm:flex-initial px-5 py-2 rounded-lg font-semibold text-sm transition bg-slate-800 text-white shadow-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-stream text-red-400"></i>
+                    <span>Live Inventory Feed</span>
+                </button>
+                <button id="tabScheduleBtn" onclick="switchMainTab('schedule')" class="flex-1 sm:flex-initial px-5 py-2 rounded-lg font-semibold text-sm transition text-slate-400 hover:text-white flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-calendar-week text-amber-400"></i>
+                    <span>Store Schedule & Cadence</span>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button onclick="openModal('techModal')" class="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 font-medium bg-cyan-950/40 px-3 py-1.5 rounded-lg border border-cyan-800/40">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>Scraper Integration Guide</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 1: LIVE INVENTORY FEED (DEFAULT) -->
+        <div id="tabAlertsSection" class="space-y-6">
+            
+            <!-- Filters & Search Bar -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row gap-3">
+                    <!-- Search Input -->
+                    <div class="relative flex-grow">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
+                        <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Search product (e.g. Prismatic Evolutions, 151, ETB)..." 
+                            class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition text-sm">
+                    </div>
+
+                    <!-- Retailer Dropdown -->
+                    <div class="w-full md:w-48">
+                        <select id="filterRetailer" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-blue-500 transition">
+                            <option value="ALL">All Retailers</option>
+                            <option value="Target">Target</option>
+                            <option value="Walmart">Walmart</option>
+                            <option value="Best Buy">Best Buy</option>
+                            <option value="GameStop">GameStop</option>
+                            <option value="Local Card Shop">Local Card Shop (LGS)</option>
+                            <option value="Vending Machine">Pokemon Vending Machine</option>
+                        </select>
+                    </div>
+
+                    <!-- Category Dropdown -->
+                    <div class="w-full md:w-48">
+                        <select id="filterCategory" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-blue-500 transition">
+                            <option value="ALL">All Categories</option>
+                            <option value="Elite Trainer Box">Elite Trainer Box (ETB)</option>
+                            <option value="Booster Bundle">Booster Bundle / Box</option>
+                            <option value="Collection Box">Collection Box / Tins</option>
+                            <option value="Singles / Packs">Singles & Packs</option>
+                        </select>
+                    </div>
+
+                    <!-- Distance Filter -->
+                    <div class="w-full md:w-40 flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-300 text-xs gap-2">
+                        <i class="fa-solid fa-sliders text-slate-400"></i>
+                        <span class="whitespace-nowrap">Max Dist:</span>
+                        <select id="filterDistance" onchange="applyFilters()" class="bg-transparent text-emerald-400 font-bold focus:outline-none w-full text-xs">
+                            <option value="50">Any (50mi)</option>
+                            <option value="5" selected>5 Miles</option>
+                            <option value="10">10 Miles</option>
+                            <option value="20">20 Miles</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Active Filter Tags & Quick Count -->
+                <div class="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60">
+                    <div class="flex items-center gap-2">
+                        <span>Showing <strong id="matchingCount" class="text-white">0</strong> restock notifications</span>
+                        <span id="activeFilterBadge" class="hidden px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px]">Filtered</span>
+                    </div>
+                    <button onclick="resetFilters()" class="text-slate-500 hover:text-slate-300 transition text-[11px] underline">Reset Filters</button>
+                </div>
+            </div>
+
+            <!-- Feed Grid -->
+            <div id="alertsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Javascript will render inventory cards here -->
+            </div>
+        </div>
+
+        <!-- TAB 2: STORE SCHEDULE & CADENCE (HIDDEN INITIALLY) -->
+        <div id="tabScheduleSection" class="hidden space-y-6">
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> Local Store Restock Schedule
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Vendor restock windows based on historical restock timestamps and community logs.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400">Vendor Type:</span>
+                        <span class="px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-xs border border-blue-500/20">MJ Holding (Target/Walmart)</span>
+                        <span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 text-xs border border-purple-500/20">Excell Marketing</span>
+                    </div>
+                </div>
+
+                <!-- Schedule Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider">
+                            <tr>
+                                <th scope="col" class="py-3 px-4 rounded-l-lg">Store Name & Address</th>
+                                <th scope="col" class="py-3 px-4">Distance</th>
+                                <th scope="col" class="py-3 px-4">Estimated Restock Window</th>
+                                <th scope="col" class="py-3 px-4">Confidence</th>
+                                <th scope="col" class="py-3 px-4">Last Verified</th>
+                                <th scope="col" class="py-3 px-4 text-right rounded-r-lg">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleTableBody" class="divide-y divide-slate-800/60">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal 1: Add Custom Alert -->
+    <div id="addAlertModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative animate-in fade-in duration-200">
+            <button onclick="closeModal('addAlertModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2 mb-1">
+                <i class="fa-solid fa-bell-plus text-red-500"></i> Add Custom Restock Alert
+            </h3>
+            <p class="text-xs text-slate-400 mb-5">Configure manual logs or hook up a store endpoint to receive local alerts.</p>
+            
+            <form id="addAlertForm" onsubmit="handleAddAlert(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Product Name</label>
+                    <input type="text" id="alertProductName" required placeholder="e.g. Prismatic Evolutions ETB" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-red-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Retailer</label>
+                        <select id="alertRetailer" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-red-500">
+                            <option value="Target">Target</option>
+                            <option value="Walmart">Walmart</option>
+                            <option value="Best Buy">Best Buy</option>
+                            <option value="GameStop">GameStop</option>
+                            <option value="Local Card Shop">Local Card Shop</option>
+                            <option value="Vending Machine">Pokemon Vending Machine</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Category</label>
+                        <select id="alertCategory" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-red-500">
+                            <option value="Elite Trainer Box">Elite Trainer Box</option>
+                            <option value="Booster Bundle">Booster Bundle</option>
+                            <option value="Collection Box">Collection Box</option>
+                            <option value="Singles / Packs">Singles / Packs</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Store Address / City</label>
+                        <input type="text" id="alertAddress" required placeholder="e.g. 123 Main St, Irvine CA" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Distance (Miles)</label>
+                        <input type="number" step="0.1" id="alertDistance" required placeholder="2.5" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-red-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Price ($)</label>
+                        <input type="number" step="0.01" id="alertPrice" required placeholder="49.99" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Stock Status</label>
+                        <select id="alertStatus" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-red-500">
+                            <option value="In Stock">In Stock</option>
+                            <option value="Low Stock">Low Stock</option>
+                            <option value="Out of Stock">Out of Stock</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-3 flex gap-3">
+                    <button type="button" onclick="closeModal('addAlertModal')" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium text-sm">Cancel</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium text-sm shadow-lg shadow-red-600/30">Publish Alert</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Technical Integration & Scraper Guide -->
+    <div id="techModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-3xl rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative">
+            <button onclick="closeModal('techModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-xl font-bold text-white flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-code text-cyan-400"></i> Backend Scraper Architecture & Setup Guide
+            </h3>
+            <p class="text-xs text-slate-400 mb-6">How to transition this dashboard into a fully automated, real-time local monitoring bot.</p>
+
+            <div class="space-y-6 text-sm text-slate-300">
+                
+                <!-- Section 1 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-cyan-400 text-sm flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700 flex items-center justify-center text-xs">1</span>
+                        Scraping Major Retailers (Target, Walmart, Best Buy)
+                    </h4>
+                    <p class="text-xs text-slate-400">Big box stores use heavy bot prevention (Akamai, Cloudflare). Standard HTTP gets will fail.</p>
+                    <ul class="list-disc pl-5 text-xs text-slate-300 space-y-1">
+                        <li><strong>Apify / Playwright:</strong> Use headless browser runners with residential proxy rotation to check ZIP-code level inventory.</li>
+                        <li><strong>Unofficial Internal APIs:</strong> Target's Redsky API (<code class="bg-slate-900 px-1 text-amber-300">tcin</code> location queries) and Walmart's store location APIs provide exact physical aisle & quantity data.</li>
+                        <li><strong>Visualping / ChangeTower:</strong> No-code option to monitor specific store product page HTML elements for status changes.</li>
+                    </ul>
+                </div>
+
+                <!-- Section 2 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-cyan-400 text-sm flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700 flex items-center justify-center text-xs">2</span>
+                        Local Card Shops (LGS) & Shopify Webhooks
+                    </h4>
+                    <p class="text-xs text-slate-400">Most local card stores build their online storefronts on Shopify.</p>
+                    <ul class="list-disc pl-5 text-xs text-slate-300 space-y-1">
+                        <li><strong>Shopify Storefront API:</strong> Query <code class="bg-slate-900 px-1 text-amber-300">https://[store-domain]/products.json</code> every 60 seconds to detect new Pokemon TCG listings before they appear on the homepage.</li>
+                        <li><strong>Discord Webhook Bots:</strong> Enable webhook listeners to parse announcements from local community Pokemon groups or store Discord servers.</li>
+                    </ul>
+                </div>
+
+                <!-- Section 3 Code Example -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-cyan-400 text-sm flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700 flex items-center justify-center text-xs">3</span>
+                        Node.js Webhook Handler Snippet
+                    </h4>
+                    <pre class="bg-slate-900 p-3 rounded-lg text-xs text-emerald-400 font-mono overflow-x-auto border border-slate-800">
+// Node.js Express route for incoming inventory alerts
+app.post('/api/restock-webhook', (req, res) => {
+    const { storeName, product, stockCount, address, distance } = req.body;
+    
+    // Broadcast via WebSocket to Frontend UI
+    io.emit('newRestock', {
+        id: Date.now(),
+        storeName,
+        product,
+        status: stockCount > 0 ? 'In Stock' : 'Out of Stock',
+        timestamp: new Date().toISOString()
+    });
+    
+    // Trigger Push Notification to Phone (Pushover / Telegram)
+    sendTelegramAlert(`⚡ RESTOCK ALERT: ${product} at ${storeName}`);
+    res.status(200).send('OK');
+});</pre>
+                </div>
+
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModal('techModal')" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-semibold">Close Guide</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Push Alert Confirmation Modal -->
+    <div id="pushModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center space-y-4">
+            <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">Push Alert Set!</h3>
+            <p class="text-xs text-slate-300" id="pushModalText">You will now receive instant phone alerts whenever this item restocks near your location.</p>
+            <button onclick="closeModal('pushModal')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium text-sm">Got it</button>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Initial Mock Inventory Feed Data
+        let inventoryAlerts = [
+            {
+                id: 1,
+                product: "Prismatic Evolutions Elite Trainer Box",
+                retailer: "Target",
+                category: "Elite Trainer Box",
+                address: "24451 Alicia Pkwy, Mission Viejo, CA",
+                distance: 1.8,
+                price: 49.99,
+                status: "In Stock",
+                timestamp: "12 mins ago",
+                badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                icon: "fa-bullseye text-red-500",
+                subscribed: false
+            },
+            {
+                id: 2,
+                product: "151 Booster Bundle (6 Packs)",
+                retailer: "Walmart",
+                category: "Booster Bundle",
+                address: "30491 Avenida De Las Flores, RSM, CA",
+                distance: 2.4,
+                price: 26.88,
+                status: "Low Stock",
+                timestamp: "34 mins ago",
+                badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+                icon: "fa-box-open text-blue-500",
+                subscribed: true
+            },
+            {
+                id: 3,
+                product: "Surging Sparks Premium Collection Box",
+                retailer: "Local Card Shop",
+                category: "Collection Box",
+                address: "Collector Cave, 102 Main St, Aliso Viejo, CA",
+                distance: 4.1,
+                price: 39.99,
+                status: "In Stock",
+                timestamp: "1 hour ago",
+                badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                icon: "fa-store text-purple-400",
+                subscribed: false
+            },
+            {
+                id: 4,
+                product: "Crown Zenith Special Tins (Articuno)",
+                retailer: "Pokemon Vending Machine",
+                category: "Collection Box",
+                address: "Fred Meyer Center, 401 S El Camino",
+                distance: 3.5,
+                price: 19.99,
+                status: "In Stock",
+                timestamp: "2 hours ago",
+                badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                icon: "fa-robot text-yellow-400",
+                subscribed: false
+            },
+            {
+                id: 5,
+                product: "Paldean Fates Booster Bundle",
+                retailer: "Best Buy",
+                category: "Booster Bundle",
+                address: "27381 La Paz Rd, Laguna Niguel, CA",
+                distance: 7.2,
+                price: 26.99,
+                status: "Out of Stock",
+                timestamp: "3 hours ago",
+                badgeColor: "bg-rose-500/20 text-rose-400 border-rose-500/30",
+                icon: "fa-tags text-yellow-500",
+                subscribed: false
+            },
+            {
+                id: 6,
+                product: "Twilight Masquerade Sleeved Booster Pack",
+                retailer: "GameStop",
+                category: "Singles / Packs",
+                address: "28251 Marguerite Pkwy, Mission Viejo, CA",
+                distance: 4.8,
+                price: 4.49,
+                status: "In Stock",
+                timestamp: "4 hours ago",
+                badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                icon: "fa-gamepad text-red-400",
+                subscribed: false
+            }
+        ];
+
+        // Store Schedule & Vendor Cadence Data
+        const storeSchedules = [
+            {
+                name: "Target (Mission Viejo)",
+                address: "24451 Alicia Pkwy, CA",
+                distance: "1.8 mi",
+                window: "Friday mornings (7:30 AM - 9:00 AM)",
+                confidence: "High (92%)",
+                vendor: "MJ Holding Rep",
+                lastSeen: "Today, 7:45 AM"
+            },
+            {
+                name: "Walmart Supercenter (RSM)",
+                address: "30491 Avenida De Las Flores, CA",
+                distance: "2.4 mi",
+                window: "Tuesday & Thursday (6:00 AM - 8:00 AM)",
+                confidence: "Medium (78%)",
+                vendor: "Excell Rep",
+                lastSeen: "Yesterday"
+            },
+            {
+                name: "Pokemon Official Vending Kiosk",
+                address: "Fred Meyer Shopping Center",
+                distance: "3.5 mi",
+                window: "Wednesdays (11:00 AM - 1:00 PM)",
+                confidence: "High (95%)",
+                vendor: "Direct Official",
+                lastSeen: "Today, 11:20 AM"
+            },
+            {
+                name: "Local Card Shop (Collector Cave)",
+                address: "102 Main St, Aliso Viejo",
+                distance: "4.1 mi",
+                window: "Wednesdays (Release Day 2:00 PM)",
+                confidence: "Very High (98%)",
+                vendor: "Direct Distributor",
+                lastSeen: "Today, 1:00 PM"
+            },
+            {
+                name: "GameStop (Marguerite)",
+                address: "28251 Marguerite Pkwy, CA",
+                distance: "4.8 mi",
+                window: "Saturday Openings (10:00 AM)",
+                confidence: "Medium (80%)",
+                vendor: "Direct Store Ship",
+                lastSeen: "3 days ago"
+            }
+        ];
+
+        // DOM Loaded Init
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAlerts(inventoryAlerts);
+            renderScheduleTable();
+            updateMetrics();
+        });
+
+        // Render Inventory Feed Cards
+        function renderAlerts(items) {
+            const container = document.getElementById('alertsContainer');
+            document.getElementById('matchingCount').innerText = items.length;
+
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center space-y-3">
+                        <i class="fa-solid fa-ghost text-4xl text-slate-600"></i>
+                        <h4 class="text-base font-bold text-slate-300">No restock alerts match your filters</h4>
+                        <p class="text-xs text-slate-500">Try widening your distance radius or changing selected retailer filters.</p>
+                        <button onclick="resetFilters()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-lg">Clear All Filters</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <div class="bg-slate-900 border border-slate-800/90 hover:border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition group">
+                    <div>
+                        <!-- Header & Badges -->
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-8 h-8 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-base">
+                                    <i class="${item.icon}"></i>
+                                </span>
+                                <div>
+                                    <span class="text-xs font-semibold text-slate-400 block">${item.retailer}</span>
+                                    <span class="text-[11px] text-slate-500"><i class="fa-solid fa-location-dot text-red-500/80 mr-1"></i>${item.distance} miles away</span>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${item.badgeColor}">
+                                ${item.status}
+                            </span>
+                        </div>
+
+                        <!-- Product Title -->
+                        <h3 class="text-base font-bold text-slate-100 group-hover:text-red-400 transition leading-snug mb-2">
+                            ${item.product}
+                        </h3>
+
+                        <!-- Location & Details -->
+                        <div class="text-xs text-slate-400 space-y-1 mb-4">
+                            <p class="flex items-center gap-1.5 truncate">
+                                <i class="fa-solid fa-map-pin text-slate-500"></i>
+                                <span>${item.address}</span>
+                            </p>
+                            <p class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-clock text-slate-500"></i>
+                                <span>Restocked ${item.timestamp}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Controls -->
+                    <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                        <div class="text-lg font-extrabold text-white">
+                            $${item.price.toFixed(2)}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="togglePushAlert(${item.id})" class="p-2.5 rounded-xl border transition text-xs flex items-center gap-1.5 ${item.subscribed ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}" title="Toggle Alert Notifications">
+                                <i class="fa-solid ${item.subscribed ? 'fa-bell-slash' : 'fa-bell'}"></i>
+                            </button>
+                            <a href="https://maps.google.com/?q=${encodeURIComponent(item.address)}" target="_blank" class="px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-diamond-turn-right text-xs"></i>
+                                <span>Directions</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Schedule Table View
+        function renderScheduleTable() {
+            const tbody = document.getElementById('scheduleTableBody');
+            tbody.innerHTML = storeSchedules.map(row => `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="py-3.5 px-4 font-semibold text-white">
+                        <div>${row.name}</div>
+                        <div class="text-xs text-slate-400 font-normal">${row.address}</div>
+                    </td>
+                    <td class="py-3.5 px-4 text-xs text-slate-300 font-medium">
+                        <span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">${row.distance}</span>
+                    </td>
+                    <td class="py-3.5 px-4 text-xs text-amber-300 font-medium">
+                        <i class="fa-solid fa-clock mr-1 text-amber-400/80"></i>${row.window}
+                    </td>
+                    <td class="py-3.5 px-4 text-xs">
+                        <span class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">${row.confidence}</span>
+                    </td>
+                    <td class="py-3.5 px-4 text-xs text-slate-400">${row.lastSeen}</td>
+                    <td class="py-3.5 px-4 text-right">
+                        <a href="https://maps.google.com/?q=${encodeURIComponent(row.address)}" target="_blank" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium inline-flex items-center gap-1">
+                            <i class="fa-solid fa-route text-sky-400"></i> Map
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Apply Search & Dropdown Filters
+        function applyFilters() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const retailer = document.getElementById('filterRetailer').value;
+            const category = document.getElementById('filterCategory').value;
+            const maxDist = parseFloat(document.getElementById('filterDistance').value);
+
+            const filtered = inventoryAlerts.filter(item => {
+                const matchesSearch = item.product.toLowerCase().includes(query) || item.address.toLowerCase().includes(query);
+                const matchesRetailer = (retailer === 'ALL' || item.retailer === retailer);
+                const matchesCategory = (category === 'ALL' || item.category === category);
+                const matchesDistance = (maxDist === 50 || item.distance <= maxDist);
+
+                return matchesSearch && matchesRetailer && matchesCategory && matchesDistance;
+            });
+
+            // Toggle active filter badge UI
+            const isFiltered = query !== '' || retailer !== 'ALL' || category !== 'ALL' || maxDist !== 50;
+            document.getElementById('activeFilterBadge').classList.toggle('hidden', !isFiltered);
+
+            renderAlerts(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterRetailer').value = 'ALL';
+            document.getElementById('filterCategory').value = 'ALL';
+            document.getElementById('filterDistance').value = '50';
+            applyFilters();
+        }
+
+        // Switch Between Main View Tabs
+        function switchMainTab(tab) {
+            const alertsSec = document.getElementById('tabAlertsSection');
+            const schedSec = document.getElementById('tabScheduleSection');
+            const alertsBtn = document.getElementById('tabAlertsBtn');
+            const schedBtn = document.getElementById('tabScheduleBtn');
+
+            if (tab === 'alerts') {
+                alertsSec.classList.remove('hidden');
+                schedSec.classList.add('hidden');
+                alertsBtn.className = "flex-1 sm:flex-initial px-5 py-2 rounded-lg font-semibold text-sm transition bg-slate-800 text-white shadow-sm flex items-center justify-center gap-2";
+                schedBtn.className = "flex-1 sm:flex-initial px-5 py-2 rounded-lg font-semibold text-sm transition text-slate-400 hover:text-white flex items-center justify-center gap-2";
+            } else {
+                alertsSec.classList.add('hidden');
+                schedSec.classList.remove('hidden');
+                schedBtn.className = "flex-1 sm:flex-initial px-5 py-2 rounded-lg font-semibold text-sm transition bg-slate-800 text-white shadow-sm flex items-center justify-center gap-2";
+                alertsBtn.className = "flex-1 sm:flex-initial px-5 py-2 rounded-lg font-semibold text-sm transition text-slate-400 hover:text-white flex items-center justify-center gap-2";
+            }
+        }
+
+        // Toggle Push Alert
+        function togglePushAlert(id) {
+            const item = inventoryAlerts.find(a => a.id === id);
+            if (item) {
+                item.subscribed = !item.subscribed;
+                applyFilters();
+
+                if (item.subscribed) {
+                    document.getElementById('pushModalText').innerText = `Push notification enabled for "${item.product}" at ${item.retailer}!`;
+                    openModal('pushModal');
+                }
+            }
+        }
+
+        // Handle Add Alert Form Submission
+        function handleAddAlert(e) {
+            e.preventDefault();
+
+            const product = document.getElementById('alertProductName').value;
+            const retailer = document.getElementById('alertRetailer').value;
+            const category = document.getElementById('alertCategory').value;
+            const address = document.getElementById('alertAddress').value;
+            const distance = parseFloat(document.getElementById('alertDistance').value);
+            const price = parseFloat(document.getElementById('alertPrice').value);
+            const status = document.getElementById('alertStatus').value;
+
+            let badgeColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+            if (status === 'Low Stock') badgeColor = "bg-amber-500/20 text-amber-400 border-amber-500/30";
+            if (status === 'Out of Stock') badgeColor = "bg-rose-500/20 text-rose-400 border-rose-500/30";
+
+            let icon = "fa-store text-red-500";
+            if (retailer === 'Target') icon = "fa-bullseye text-red-500";
+            if (retailer === 'Walmart') icon = "fa-box-open text-blue-500";
+            if (retailer === 'Vending Machine') icon = "fa-robot text-yellow-400";
+
+            const newAlert = {
+                id: Date.now(),
+                product,
+                retailer,
+                category,
+                address,
+                distance,
+                price,
+                status,
+                timestamp: "Just now",
+                badgeColor,
+                icon,
+                subscribed: true
+            };
+
+            inventoryAlerts.unshift(newAlert);
+            closeModal('addAlertModal');
+            applyFilters();
+            updateMetrics();
+
+            // Reset Form
+            document.getElementById('addAlertForm').reset();
+
+            // Show Toast Notification
+            showToast("Custom Alert Published!", `Added restock alert for ${product}`);
+        }
+
+        // Simulated Live Scan Action
+        function runScanAnimation() {
+            const btn = document.getElementById('scanBtn');
+            const icon = document.getElementById('scanIcon');
+            
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            icon.classList.add('animate-spin');
+
+            setTimeout(() => {
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                icon.classList.remove('animate-spin');
+                
+                // Add a new mock scanned item to simulated real-time feed
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const scannedItem = {
+                    id: Date.now(),
+                    product: "Pokemon 151 Zapdos ex Collection Box",
+                    retailer: "Target",
+                    category: "Collection Box",
+                    address: "24451 Alicia Pkwy, Mission Viejo, CA",
+                    distance: 1.8,
+                    price: 21.99,
+                    status: "In Stock",
+                    timestamp: `Just scanned at ${timeStr}`,
+                    badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                    icon: "fa-bullseye text-red-500",
+                    subscribed: false
+                };
+
+                inventoryAlerts.unshift(scannedItem);
+                applyFilters();
+                updateMetrics();
+                
+                document.getElementById('lastUpdatedTime').innerText = `Updated at ${timeStr}`;
+                showToast("Live Scan Complete", "Discovered 1 fresh stock update at nearby Target!");
+            }, 1200);
+        }
+
+        // Metrics Calculation Helper
+        function updateMetrics() {
+            document.getElementById('metricStores').innerText = storeSchedules.length;
+            document.getElementById('metricItems').innerText = inventoryAlerts.length;
+            
+            const countInStock = inventoryAlerts.filter(a => a.status === 'In Stock').length;
+            document.getElementById('metricRestocks').innerText = countInStock;
+        }
+
+        // Toast Helper
+        function showToast(title, msg) {
+            const toast = document.getElementById('toastBanner');
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastMessage').innerText = msg;
+            toast.classList.remove('hidden');
+        }
+
+        function hideToast() {
+            document.getElementById('toastBanner').classList.add('hidden');
+        }
+
+        // Modal Helpers
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
